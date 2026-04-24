@@ -1,12 +1,215 @@
-import { supabase } from './supabase.js'
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard — Desarrollo de Fondos</title>
+  <link rel="stylesheet" href="./css/style.css">
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar" id="sidebar"></aside>
+  <div class="main">
+    <div class="topbar">
+      <div>
+        <div class="topbar-title">Dashboard</div>
+        <div class="topbar-sub" id="fecha-hoy"></div>
+      </div>
+      <a href="./tareas.html" class="btn-primary" style="text-decoration:none">+ Nueva tarea</a>
+    </div>
 
-export async function requireAuth() {
+    <div class="cards-grid" style="grid-template-columns:repeat(4,1fr)">
+      <div class="card">
+        <div class="card-label">Tareas urgentes hoy</div>
+        <div class="card-value" style="color:#ef4444" id="d-urgentes">—</div>
+        <div class="card-sub" id="d-vencidas"></div>
+      </div>
+      <div class="card">
+        <div class="card-label">En proceso</div>
+        <div class="card-value" style="color:#3b82f6" id="d-proceso">—</div>
+        <div class="card-sub">Esta semana</div>
+      </div>
+      <div class="card">
+        <div class="card-label">Prospectos alcanzados</div>
+        <div class="card-value" style="color:#10b981" id="d-obj-pct">—</div>
+        <div class="progress-bar"><div class="progress-fill" style="background:#10b981" id="d-obj-bar"></div></div>
+      </div>
+      <div class="card">
+        <div class="card-label">Grandes Donantes</div>
+        <div class="card-value" id="d-donantes">—</div>
+        <div class="card-sub" id="d-donantes-sub"></div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="box">
+        <div class="box-header">
+          <span class="box-title">Tareas urgentes</span>
+          <span class="badge" style="background:#fee2e2;color:#991b1b" id="badge-urg">0 urgentes</span>
+        </div>
+        <div id="lista-urgentes" style="padding:0 14px"></div>
+      </div>
+      <div class="box">
+        <div class="box-header">
+          <span class="box-title" id="cal-titulo"></span>
+          <div style="display:flex;gap:6px">
+            <button class="btn-secondary" style="padding:3px 8px;font-size:11px" onclick="cambiarMes(-1)">‹</button>
+            <button class="btn-secondary" style="padding:3px 8px;font-size:11px" onclick="cambiarMes(1)">›</button>
+          </div>
+        </div>
+        <div style="padding:12px" id="calendario"></div>
+      </div>
+    </div>
+
+    <div class="box">
+      <div class="box-header"><span class="box-title">Objetivos — Avance anual</span></div>
+      <div style="padding:8px 14px" id="dashboard-objetivos"></div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
+
+  const supabase = createClient(
+    'https://hoyqbbeycpgmqydkvznb.supabase.co',
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhveXFiYmV5Y3BnbXF5ZGt2em5iIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcwMzk1NDMsImV4cCI6MjA5MjYxNTU0M30.zIjCzGds1r_Hxq_gZfYFGeFawIaiVp1uhIfPwtgEy0w'
+  )
+
   const { data: { session } } = await supabase.auth.getSession()
-  if (!session) window.location.href = '/index.html'
-  return session
-}
+  if (!session) { window.location.href = '/index.html' }
 
-export async function signOut() {
-  await supabase.auth.signOut()
-  window.location.href = '/index.html'
-}
+  const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
+  const dias = ['Lu','Ma','Mi','Ju','Vi','Sa','Do']
+  const today = new Date()
+  let calYear = today.getFullYear(), calMonth = today.getMonth()
+
+  document.getElementById('fecha-hoy').textContent =
+    today.toLocaleDateString('es-AR', { weekday:'long', year:'numeric', month:'long', day:'numeric' })
+
+  // Sidebar
+  const navItems = [
+    { href:'/dashboard.html',     label:'Dashboard',        color:'#60a5fa', section:'Principal' },
+    { href:'/tareas.html',        label:'Tareas',           color:'#f59e0b', section:'Gestión' },
+    { href:'/objetivos.html',     label:'Objetivos',        color:'#10b981', section:'Gestión' },
+    { href:'/donantes.html',      label:'Grandes Donantes', color:'#a78bfa', section:'Gestión' },
+    { href:'/accesos.html',       label:'Accesos Directos', color:'#6ee7b7', section:'Otros' },
+    { href:'/configuracion.html', label:'Configuración',    color:'#94a3b8', section:'Otros' },
+  ]
+  const sections = ['Principal','Gestión','Otros']
+  document.getElementById('sidebar').innerHTML = `
+    <div style="padding:20px 16px 16px;border-bottom:0.5px solid rgba(255,255,255,0.08)">
+      <div style="font-size:10px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:1px">Fundraising</div>
+      <div style="font-size:13px;color:#fff;font-weight:500;margin-top:3px">Gestor de Tareas</div>
+    </div>
+    ${sections.map(sec => `
+      <div style="padding:12px 12px 4px;font-size:10px;color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:1px">${sec}</div>
+      ${navItems.filter(n => n.section===sec).map(item => `
+        <a href="${item.href}" class="nav-item ${window.location.pathname.includes(item.href.replace('/','')) ? 'active' : ''}">
+          <div style="width:7px;height:7px;border-radius:50%;background:${item.color};flex-shrink:0"></div>
+          ${item.label}
+        </a>`).join('')}
+    `).join('')}
+    <div style="margin-top:auto;padding:12px 8px">
+      <a class="nav-item" id="btn-signout" style="cursor:pointer;color:rgba(255,255,255,0.35)">
+        <div style="width:7px;height:7px;border-radius:50%;background:#475569;flex-shrink:0"></div>
+        Cerrar sesión
+      </a>
+    </div>`
+  document.getElementById('btn-signout').addEventListener('click', async () => {
+    await supabase.auth.signOut()
+    window.location.href = '/index.html'
+  })
+
+  const [{ data: tasks }, { data: contacts }, { data: objectives }] = await Promise.all([
+    supabase.from('tasks').select('*'),
+    supabase.from('contacts').select('*'),
+    supabase.from('objectives').select('*').eq('periodo','Anual').eq('anio', today.getFullYear())
+  ])
+
+  const todayStr = today.toISOString().split('T')[0]
+  const urgentes  = (tasks||[]).filter(t => t.estado === 'Urgente')
+  const vencidas  = (tasks||[]).filter(t => t.fecha_vencimiento && t.fecha_vencimiento < todayStr && t.estado !== 'Completada')
+  const proceso   = (tasks||[]).filter(t => t.estado === 'En Proceso')
+  const porRenovar = (contacts||[]).filter(c => c.estado === 'Por renovar')
+
+  document.getElementById('d-urgentes').textContent  = urgentes.length
+  document.getElementById('d-vencidas').textContent  = `${vencidas.length} vencidas`
+  document.getElementById('d-proceso').textContent   = proceso.length
+  document.getElementById('d-donantes').textContent  = (contacts||[]).length
+  document.getElementById('d-donantes-sub').textContent = `${porRenovar.length} por renovar`
+  document.getElementById('badge-urg').textContent   = `${urgentes.length} urgentes`
+
+  const prosp = (objectives||[]).find(o => o.categoria === 'Prospectos')
+  if (prosp && prosp.meta > 0) {
+    const pct = Math.round(prosp.real_alcanzado / prosp.meta * 100)
+    document.getElementById('d-obj-pct').textContent = pct + '%'
+    document.getElementById('d-obj-bar').style.width = pct + '%'
+  }
+
+  const listaEl = document.getElementById('lista-urgentes')
+  listaEl.innerHTML = urgentes.length === 0
+    ? `<div style="padding:16px 0;text-align:center;color:#94a3b8;font-size:12px">Sin tareas urgentes</div>`
+    : urgentes.slice(0,5).map(t => `
+      <div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:0.5px solid #f1f5f9">
+        <div style="width:8px;height:8px;border-radius:50%;background:#ef4444;flex-shrink:0"></div>
+        <div style="flex:1">
+          <div style="font-size:12px;font-weight:500">${t.tarea}</div>
+          <div style="font-size:10px;color:#94a3b8">${t.medio||''} · Vence ${t.fecha_vencimiento?.slice(5).replace('-','/') || '—'}</div>
+        </div>
+        <span class="badge" style="background:#fee2e2;color:#991b1b">Urgente</span>
+      </div>`).join('')
+
+  const COLS = {'Prospectos':'#3b82f6','Recuperados':'#f59e0b','Renovados':'#10b981','Grandes donantes':'#a78bfa','Testamento Solidario':'#6ee7b7'}
+  document.getElementById('dashboard-objetivos').innerHTML = (objectives||[]).length === 0
+    ? `<div style="padding:16px 0;text-align:center;color:#94a3b8;font-size:12px">Sin objetivos cargados</div>`
+    : (objectives||[]).map(o => {
+      const pct = o.meta > 0 ? Math.round(o.real_alcanzado / o.meta * 100) : 0
+      const col = COLS[o.categoria] || '#94a3b8'
+      return `<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:0.5px solid #f1f5f9">
+        <div style="width:110px;font-size:12px;font-weight:500;flex-shrink:0">${o.categoria}</div>
+        <div style="flex:1;height:6px;background:#f1f5f9;border-radius:3px">
+          <div style="width:${pct}%;height:100%;background:${col};border-radius:3px"></div>
+        </div>
+        <div style="font-size:12px;font-weight:500;color:${col};width:36px;text-align:right">${pct}%</div>
+        <div style="font-size:11px;color:#94a3b8;width:80px;text-align:right">${o.real_alcanzado} / ${o.meta}</div>
+      </div>`
+    }).join('')
+
+  window.cambiarMes = (d) => {
+    calMonth += d
+    if (calMonth > 11) { calMonth = 0; calYear++ }
+    if (calMonth < 0)  { calMonth = 11; calYear-- }
+    renderCal()
+  }
+
+  function renderCal() {
+    document.getElementById('cal-titulo').textContent = `${meses[calMonth]} ${calYear}`
+    const taskDays = new Set((tasks||[]).filter(t => {
+      const d = t.fecha_vencimiento || t.fecha_inicio
+      return d && d.startsWith(`${calYear}-${String(calMonth+1).padStart(2,'0')}`)
+    }).map(t => parseInt((t.fecha_vencimiento||t.fecha_inicio).slice(8))))
+
+    const first = new Date(calYear, calMonth, 1).getDay()
+    const offset = first === 0 ? 6 : first - 1
+    const days = new Date(calYear, calMonth+1, 0).getDate()
+    const todayDay = today.getFullYear()===calYear && today.getMonth()===calMonth ? today.getDate() : -1
+
+    document.getElementById('calendario').innerHTML = `
+      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center">
+        ${dias.map(d => `<div style="font-size:10px;color:#94a3b8;padding:3px 0;font-weight:500">${d}</div>`).join('')}
+        ${Array(offset).fill('<div></div>').join('')}
+        ${Array.from({length:days},(_,i) => {
+          const n = i+1
+          const isToday = n === todayDay
+          const hasTask = taskDays.has(n)
+          return `<div style="padding:5px 2px;border-radius:4px;font-size:12px;
+            ${isToday ? 'background:#0f172a;color:#60a5fa;font-weight:500' :
+              hasTask ? 'background:#dbeafe;color:#1e40af;font-weight:500' : 'color:#64748b'}">${n}</div>`
+        }).join('')}
+      </div>`
+  }
+  renderCal()
+</script>
+</body>
+</html>
