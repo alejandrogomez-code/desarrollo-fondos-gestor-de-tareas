@@ -98,12 +98,49 @@
 </div>
 
 <script type="module">
-  import { supabase } from './js/supabase.js'
-  import { requireAuth, signOut } from './js/auth.js'
-  import { renderSidebar } from './js/sidebar.js'
+  import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
 
-  await requireAuth()
-  renderSidebar('tareas', signOut)
+  const supabase = createClient(
+    'https://hoyqbbeycpgmqydkvznb.supabase.co',
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhveXFiYmV5Y3BnbXF5ZGt2em5iIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcwMzk1NDMsImV4cCI6MjA5MjYxNTU0M30.zIjCzGds1r_Hxq_gZfYFGeFawIaiVp1uhIfPwtgEy0w'
+  )
+
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) window.location.href = '/index.html'
+
+  // Sidebar
+  const navItems = [
+    { href:'/dashboard.html',     label:'Dashboard',        color:'#60a5fa', section:'Principal' },
+    { href:'/tareas.html',        label:'Tareas',           color:'#f59e0b', section:'Gestión' },
+    { href:'/objetivos.html',     label:'Objetivos',        color:'#10b981', section:'Gestión' },
+    { href:'/donantes.html',      label:'Grandes Donantes', color:'#a78bfa', section:'Gestión' },
+    { href:'/accesos.html',       label:'Accesos Directos', color:'#6ee7b7', section:'Otros' },
+    { href:'/configuracion.html', label:'Configuración',    color:'#94a3b8', section:'Otros' },
+  ]
+  const sections = ['Principal','Gestión','Otros']
+  document.getElementById('sidebar').innerHTML = `
+    <div style="padding:20px 16px 16px;border-bottom:0.5px solid rgba(255,255,255,0.08)">
+      <div style="font-size:10px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:1px">Fundraising</div>
+      <div style="font-size:13px;color:#fff;font-weight:500;margin-top:3px">Gestor de Tareas</div>
+    </div>
+    ${sections.map(sec => `
+      <div style="padding:12px 12px 4px;font-size:10px;color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:1px">${sec}</div>
+      ${navItems.filter(n => n.section===sec).map(item => `
+        <a href="${item.href}" class="nav-item ${window.location.pathname.includes(item.href.replace('/','')) ? 'active' : ''}">
+          <div style="width:7px;height:7px;border-radius:50%;background:${item.color};flex-shrink:0"></div>
+          ${item.label}
+        </a>`).join('')}
+    `).join('')}
+    <div style="margin-top:auto;padding:12px 8px">
+      <a class="nav-item" id="btn-signout" style="cursor:pointer;color:rgba(255,255,255,0.35)">
+        <div style="width:7px;height:7px;border-radius:50%;background:#475569;flex-shrink:0"></div>
+        Cerrar sesión
+      </a>
+    </div>`
+  document.getElementById('btn-signout').addEventListener('click', async () => {
+    await supabase.auth.signOut()
+    window.location.href = '/index.html'
+  })
 
   const today = new Date().toISOString().split('T')[0]
   let allTasks = [], editId = null, filtro = 'todas', vista = 'tabla'
@@ -134,7 +171,8 @@
       s.innerHTML = ''; s.appendChild(first)
       arr.forEach(x => { const o = document.createElement('option'); o.textContent = x.label; s.appendChild(o) })
     }
-    poblar('f-medio', medios); poblar('f-grupo', grupos)
+    poblar('f-medio', medios)
+    poblar('f-grupo', grupos)
     render()
   }
 
@@ -152,8 +190,8 @@
   }
 
   function render() {
-    if (vista === 'tabla')    renderTabla()
-    if (vista === 'kanban')   renderKanban()
+    if (vista === 'tabla')     renderTabla()
+    if (vista === 'kanban')    renderKanban()
     if (vista === 'historial') renderHistorial()
   }
 
@@ -195,7 +233,7 @@
             <div class="k-card-title">${t.tarea}</div>
             <div class="k-card-meta">${t.medio||''} · ${t.grupo||''}</div>
             ${t.fecha_vencimiento ? `<div style="font-size:10px;margin-top:3px;color:${isVencida(t)?'#ef4444':'#94a3b8'};font-weight:${isVencida(t)?500:400}">
-              ${isVencida(t)?'VENCIDA':''} ${fmtDate(t.fecha_vencimiento)}</div>` : ''}
+              ${isVencida(t)?'VENCIDA ':''} ${fmtDate(t.fecha_vencimiento)}</div>` : ''}
           </div>`).join('')}
       </div>`
     }).join('')
@@ -228,8 +266,8 @@
     vista = v
     document.querySelectorAll('.btn-view').forEach(b => b.classList.remove('active'))
     el.classList.add('active')
-    document.getElementById('v-tabla').style.display    = v==='tabla'    ? '' : 'none'
-    document.getElementById('v-kanban').style.display   = v==='kanban'   ? '' : 'none'
+    document.getElementById('v-tabla').style.display     = v==='tabla'     ? '' : 'none'
+    document.getElementById('v-kanban').style.display    = v==='kanban'    ? '' : 'none'
     document.getElementById('v-historial').style.display = v==='historial' ? '' : 'none'
     render()
   }
@@ -249,10 +287,10 @@
       document.getElementById('f-url').value     = t.url || ''
       document.getElementById('f-nota').value    = t.nota || ''
     } else {
-      ['f-inicio','f-vence','f-tarea','f-url','f-nota'].forEach(id => document.getElementById(id).value = '')
-      document.getElementById('f-medio').value = ''
-      document.getElementById('f-grupo').value = ''
-      document.getElementById('f-org').value = ''
+      ['f-inicio','f-vence','f-tarea','f-url','f-nota'].forEach(i => document.getElementById(i).value = '')
+      document.getElementById('f-medio').value  = ''
+      document.getElementById('f-grupo').value  = ''
+      document.getElementById('f-org').value    = ''
       document.getElementById('f-estado').value = 'Pendiente'
     }
     document.getElementById('modal').classList.add('open')
@@ -261,29 +299,39 @@
   window.closeModal = () => document.getElementById('modal').classList.remove('open')
 
   window.guardarTarea = async () => {
+    const tarea = document.getElementById('f-tarea').value.trim()
+    if (!tarea) return alert('La tarea no puede estar vacía')
     const payload = {
       fecha_inicio:      document.getElementById('f-inicio').value  || null,
-      tarea:             document.getElementById('f-tarea').value,
+      tarea,
       medio:             document.getElementById('f-medio').value   || null,
       grupo:             document.getElementById('f-grupo').value   || null,
       organizacion:      document.getElementById('f-org').value     || null,
       estado:            document.getElementById('f-estado').value,
       fecha_vencimiento: document.getElementById('f-vence').value   || null,
       url:               document.getElementById('f-url').value     || null,
-      nota:              document.getElementById('f-nota').value     || null,
+      nota:              document.getElementById('f-nota').value    || null,
     }
-    if (!payload.tarea) return alert('La tarea no puede estar vacía')
     if (editId) {
       await supabase.from('tasks').update(payload).eq('id', editId)
     } else {
       await supabase.from('tasks').insert(payload)
     }
-    closeModal(); fetchAll()
+    closeModal()
+    fetchAll()
   }
 
-  window._edit   = id => openModal(id)
-  window._done   = async id => { await supabase.from('tasks').update({ estado:'Completada', completada_at: new Date().toISOString() }).eq('id',id); fetchAll() }
-  window._del    = async id => { if(confirm('¿Eliminar esta tarea?')) { await supabase.from('tasks').delete().eq('id',id); fetchAll() } }
+  window._edit = id => openModal(id)
+  window._done = async id => {
+    await supabase.from('tasks').update({ estado:'Completada', completada_at: new Date().toISOString() }).eq('id', id)
+    fetchAll()
+  }
+  window._del = async id => {
+    if (confirm('¿Eliminar esta tarea?')) {
+      await supabase.from('tasks').delete().eq('id', id)
+      fetchAll()
+    }
+  }
 
   fetchAll()
 </script>
