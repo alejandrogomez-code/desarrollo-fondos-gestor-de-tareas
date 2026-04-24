@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Configuración — Desarrollo de Fondos</title>
+  <link rel="stylesheet" href="./css/style.css">
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar" id="sidebar"></aside>
+  <div class="main">
+    <div class="topbar">
+      <div>
+        <div class="topbar-title">Configuración</div>
+        <div class="topbar-sub">Medios, grupos y categorías</div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <!-- Medios -->
+      <div class="box">
+        <div class="box-header">
+          <span class="box-title">Medios de contacto</span>
+          <button class="btn-primary" onclick="openModal('medio')">+ Agregar</button>
+        </div>
+        <div style="padding:14px;display:flex;flex-wrap:wrap;gap:8px;align-items:center" id="list-medio"></div>
+      </div>
+
+      <!-- Grupos -->
+      <div class="box">
+        <div class="box-header">
+          <span class="box-title">Grupos de tareas</span>
+          <button class="btn-primary" onclick="openModal('grupo')">+ Agregar</button>
+        </div>
+        <div style="padding:14px;display:flex;flex-wrap:wrap;gap:8px;align-items:center" id="list-grupo"></div>
+      </div>
+
+      <!-- Categorías acceso -->
+      <div class="box">
+        <div class="box-header">
+          <span class="box-title">Categorías de accesos</span>
+          <button class="btn-primary" onclick="openModal('categoria_acceso')">+ Agregar</button>
+        </div>
+        <div style="padding:14px;display:flex;flex-wrap:wrap;gap:8px;align-items:center" id="list-categoria_acceso"></div>
+      </div>
+
+      <!-- Organizaciones -->
+      <div class="box">
+        <div class="box-header">
+          <span class="box-title">Organizaciones</span>
+          <button class="btn-primary" onclick="openModal('organizacion')">+ Agregar</button>
+        </div>
+        <div style="padding:14px;display:flex;flex-wrap:wrap;gap:8px;align-items:center" id="list-organizacion"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal -->
+<div class="modal-bg" id="modal">
+  <div class="modal" style="width:360px">
+    <div class="modal-title">
+      <span id="modal-title-text">Nueva opción</span>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    <div class="form-grid" style="grid-template-columns:1fr">
+      <div class="form-group"><label>Nombre</label><input type="text" id="f-label" placeholder="Nombre de la opción"></div>
+    </div>
+    <div class="form-actions">
+      <button class="btn-secondary" onclick="closeModal()">Cancelar</button>
+      <button class="btn-primary" onclick="guardar()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
+
+  const supabase = createClient(
+    'https://hoyqbbeycpgmqydkvznb.supabase.co',
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhveXFiYmV5Y3BnbXF5ZGt2em5iIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcwMzk1NDMsImV4cCI6MjA5MjYxNTU0M30.zIjCzGds1r_Hxq_gZfYFGeFawIaiVp1uhIfPwtgEy0w'
+  )
+
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) window.location.href = '/index.html'
+
+  const navItems = [
+    { href:'/dashboard.html',     label:'Dashboard',        color:'#60a5fa', section:'Principal' },
+    { href:'/tareas.html',        label:'Tareas',           color:'#f59e0b', section:'Gestión' },
+    { href:'/objetivos.html',     label:'Objetivos',        color:'#10b981', section:'Gestión' },
+    { href:'/donantes.html',      label:'Grandes Donantes', color:'#a78bfa', section:'Gestión' },
+    { href:'/accesos.html',       label:'Accesos Directos', color:'#6ee7b7', section:'Otros' },
+    { href:'/configuracion.html', label:'Configuración',    color:'#94a3b8', section:'Otros' },
+  ]
+  const sections = ['Principal','Gestión','Otros']
+  document.getElementById('sidebar').innerHTML = `
+    <div style="padding:20px 16px 16px;border-bottom:0.5px solid rgba(255,255,255,0.08)">
+      <div style="font-size:10px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:1px">Fundraising</div>
+      <div style="font-size:13px;color:#fff;font-weight:500;margin-top:3px">Gestor de Tareas</div>
+    </div>
+    ${sections.map(sec => `
+      <div style="padding:12px 12px 4px;font-size:10px;color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:1px">${sec}</div>
+      ${navItems.filter(n => n.section===sec).map(item => `
+        <a href="${item.href}" class="nav-item ${window.location.pathname.includes(item.href.replace('/','')) ? 'active' : ''}">
+          <div style="width:7px;height:7px;border-radius:50%;background:${item.color};flex-shrink:0"></div>
+          ${item.label}
+        </a>`).join('')}
+    `).join('')}
+    <div style="margin-top:auto;padding:12px 8px">
+      <a class="nav-item" id="btn-signout" style="cursor:pointer;color:rgba(255,255,255,0.35)">
+        <div style="width:7px;height:7px;border-radius:50%;background:#475569;flex-shrink:0"></div>
+        Cerrar sesión
+      </a>
+    </div>`
+  document.getElementById('btn-signout').addEventListener('click', async () => { await supabase.auth.signOut(); window.location.href = '/index.html' })
+
+  const TYPE_COLORS = {
+    'medio':            { bg:'#f3e8ff', color:'#6b21a8' },
+    'grupo':            { bg:'#dbeafe', color:'#1e40af' },
+    'organizacion':     { bg:'#fce7f3', color:'#9d174d' },
+    'categoria_acceso': { bg:'#dcfce7', color:'#166534' },
+  }
+
+  let allOptions = [], modalType = '', editId = null
+
+  async function fetchAll() {
+    const { data } = await supabase.from('config_options').select('*').order('label')
+    allOptions = data || []
+    render()
+  }
+
+  function render() {
+    ['medio','grupo','organizacion','categoria_acceso'].forEach(type => {
+      const items = allOptions.filter(o => o.type === type)
+      const s = TYPE_COLORS[type]
+      document.getElementById('list-'+type).innerHTML = items.map(o =>
+        `<div style="display:inline-flex;align-items:center;gap:5px;background:${s.bg};color:${s.color};padding:5px 10px;border-radius:5px;font-size:12px;font-weight:500">
+          ${o.label}
+          <button onclick="window._del('${o.id}')" style="background:none;border:none;cursor:pointer;color:${s.color};font-size:14px;line-height:1;padding:0 0 0 3px">×</button>
+        </div>`
+      ).join('') || `<span style="font-size:12px;color:#94a3b8">Sin opciones</span>`
+    })
+  }
+
+  window.openModal = (type) => {
+    modalType = type
+    editId = null
+    const labels = { medio:'Nuevo medio', grupo:'Nuevo grupo', organizacion:'Nueva organización', categoria_acceso:'Nueva categoría' }
+    document.getElementById('modal-title-text').textContent = labels[type] || 'Nueva opción'
+    document.getElementById('f-label').value = ''
+    document.getElementById('modal').classList.add('open')
+  }
+
+  window.closeModal = () => document.getElementById('modal').classList.remove('open')
+
+  window.guardar = async () => {
+    const label = document.getElementById('f-label').value.trim()
+    if (!label) return alert('El nombre no puede estar vacío')
+    await supabase.from('config_options').insert({ type: modalType, label })
+    closeModal(); fetchAll()
+  }
+
+  window._del = async id => {
+    if (confirm('¿Eliminar esta opción?')) {
+      await supabase.from('config_options').delete().eq('id', id)
+      fetchAll()
+    }
+  }
+
+  fetchAll()
+</script>
+</body>
+</html>
