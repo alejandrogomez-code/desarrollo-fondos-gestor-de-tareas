@@ -13,62 +13,49 @@
     <div class="topbar">
       <div>
         <div class="topbar-title">Objetivos y Seguimiento</div>
-        <div class="topbar-sub">Cantidad de personas por categoría</div>
+        <div class="topbar-sub">Seguimiento mensual por categoría</div>
       </div>
       <div style="display:flex;gap:8px;align-items:center">
-        <select id="sel-periodo" onchange="cambiarPeriodo()" style="font-size:12px;padding:6px 10px;border-radius:6px;border:0.5px solid #e2e8f0">
-          <option value="Anual">Anual</option>
-          <option value="Trimestral">Trimestral</option>
-          <option value="Mensual">Mensual</option>
+        <select id="sel-anio" onchange="render()" style="font-size:12px;padding:6px 10px;border-radius:6px;border:0.5px solid #e2e8f0"></select>
+        <select id="sel-cat" onchange="render()" style="font-size:12px;padding:6px 10px;border-radius:6px;border:0.5px solid #e2e8f0">
+          <option value="Prospectos">Prospectos</option>
+          <option value="Recuperados">Recuperados</option>
+          <option value="Renovados">Renovados</option>
+          <option value="Grandes donantes">Grandes donantes</option>
+          <option value="Testamento Solidario">Testamento Solidario</option>
         </select>
-        <button class="btn-primary" onclick="openModal()">+ Editar metas</button>
+        <button class="btn-primary" onclick="openModal()">+ Cargar mes</button>
       </div>
     </div>
 
-    <!-- Tarjetas -->
-    <div class="cards-grid" style="grid-template-columns:repeat(5,1fr)" id="cards-obj"></div>
+    <!-- Tarjetas resumen -->
+    <div class="cards-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:16px" id="cards-resumen"></div>
 
-    <div class="grid-2">
-      <!-- Tabla detalle -->
-      <div class="box">
-        <div class="box-header"><span class="box-title">Detalle por categoría</span></div>
+    <!-- Tabla mensual -->
+    <div class="box">
+      <div class="box-header">
+        <span class="box-title" id="tabla-titulo">Detalle mensual</span>
+      </div>
+      <div style="overflow-x:auto">
         <table>
-          <thead><tr><th>Categoría</th><th>Real</th><th>Meta</th><th>Avance</th><th>Diferencia</th></tr></thead>
-          <tbody id="tbody-obj"></tbody>
+          <thead>
+            <tr>
+              <th>Mes</th><th>Meta</th><th>Real</th><th>Avance</th><th>Diferencia</th><th></th>
+            </tr>
+          </thead>
+          <tbody id="tbody-meses"></tbody>
+          <tfoot id="tfoot-totales"></tfoot>
         </table>
       </div>
-
-      <!-- Gráfico -->
-      <div class="box">
-        <div class="box-header">
-          <span class="box-title">Gráfico de avance</span>
-          <span style="font-size:11px;color:#64748b">Real vs Meta</span>
-        </div>
-        <div id="chart-wrap" style="padding:14px;display:flex;align-items:flex-end;gap:8px;height:200px"></div>
-        <div style="display:flex;gap:14px;padding:10px 14px;flex-wrap:wrap">
-          <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:#64748b">
-            <div style="width:8px;height:8px;border-radius:2px;background:#3b82f6"></div>Real alcanzado
-          </div>
-          <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:#64748b">
-            <div style="width:8px;height:8px;border-radius:2px;background:#e2e8f0"></div>Meta total
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Histórico -->
-    <div class="box">
-      <div class="box-header"><span class="box-title">Histórico de objetivos</span></div>
-      <div id="historico-wrap" style="padding:0 14px"></div>
     </div>
   </div>
 </div>
 
-<!-- Modal editar meta -->
+<!-- Modal cargar mes -->
 <div class="modal-bg" id="modal">
-  <div class="modal">
+  <div class="modal" style="width:380px">
     <div class="modal-title">
-      <span>Editar meta</span>
+      <span id="modal-title-text">Cargar mes</span>
       <button class="modal-close" onclick="closeModal()">×</button>
     </div>
     <div class="form-grid">
@@ -78,16 +65,29 @@
           <option>Grandes donantes</option><option>Testamento Solidario</option>
         </select>
       </div>
-      <div class="form-group"><label>Período</label>
-        <select id="f-periodo"><option>Anual</option><option>Trimestral</option><option>Mensual</option></select>
+      <div class="form-group"><label>Año</label>
+        <input type="number" id="f-anio" value="2026">
       </div>
-      <div class="form-group"><label>Año</label><input type="number" id="f-anio" value="2026"></div>
-      <div class="form-group"><label>Meta (personas)</label><input type="number" id="f-meta" placeholder="0"></div>
-      <div class="form-group"><label>Real alcanzado</label><input type="number" id="f-real" placeholder="0"></div>
+      <div class="form-group"><label>Mes</label>
+        <select id="f-mes">
+          <option value="1">Enero</option><option value="2">Febrero</option>
+          <option value="3">Marzo</option><option value="4">Abril</option>
+          <option value="5">Mayo</option><option value="6">Junio</option>
+          <option value="7">Julio</option><option value="8">Agosto</option>
+          <option value="9">Septiembre</option><option value="10">Octubre</option>
+          <option value="11">Noviembre</option><option value="12">Diciembre</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Meta (personas)</label>
+        <input type="number" id="f-meta" placeholder="0" min="0">
+      </div>
+      <div class="form-group full"><label>Real alcanzado</label>
+        <input type="number" id="f-real" placeholder="0" min="0">
+      </div>
     </div>
     <div class="form-actions">
       <button class="btn-secondary" onclick="closeModal()">Cancelar</button>
-      <button class="btn-primary" onclick="guardarObj()">Guardar</button>
+      <button class="btn-primary" onclick="guardar()">Guardar</button>
     </div>
   </div>
 </div>
@@ -103,6 +103,7 @@
   const { data: { session } } = await supabase.auth.getSession()
   if (!session) window.location.href = '/index.html'
 
+  // Sidebar
   const navItems = [
     { href:'/dashboard.html',     label:'Dashboard',        color:'#60a5fa', section:'Principal' },
     { href:'/tareas.html',        label:'Tareas',           color:'#f59e0b', section:'Gestión' },
@@ -133,132 +134,164 @@
     </div>`
   document.getElementById('btn-signout').addEventListener('click', async () => { await supabase.auth.signOut(); window.location.href = '/index.html' })
 
+  const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
   const COLS = { 'Prospectos':'#3b82f6','Recuperados':'#f59e0b','Renovados':'#10b981','Grandes donantes':'#a78bfa','Testamento Solidario':'#6ee7b7' }
-  const CATS = ['Prospectos','Recuperados','Renovados','Grandes donantes','Testamento Solidario']
-  let allObj = [], periodo = 'Anual', editId = null
-  const anio = new Date().getFullYear()
+  const anioActual = new Date().getFullYear()
+  const mesActual = new Date().getMonth() + 1
+
+  let allObj = [], editId = null
+
+  // Poblar selector de años
+  const selAnio = document.getElementById('sel-anio')
+  for (let y = anioActual + 1; y >= anioActual - 3; y--) {
+    const o = document.createElement('option')
+    o.value = y; o.textContent = y
+    if (y === anioActual) o.selected = true
+    selAnio.appendChild(o)
+  }
 
   async function fetchAll() {
-    const { data } = await supabase.from('objectives').select('*').order('categoria')
+    const { data } = await supabase.from('objectives').select('*')
     allObj = data || []
     render()
   }
 
-  function getFiltered() {
-    return allObj.filter(o => o.periodo === periodo && o.anio === anio)
-  }
+  window.render = () => {
+    const cat  = document.getElementById('sel-cat').value
+    const anio = parseInt(document.getElementById('sel-anio').value)
+    const col  = COLS[cat] || '#94a3b8'
+    const mesData = Array.from({length:12}, (_,i) => {
+      const mes = i + 1
+      const o = allObj.find(x => x.categoria===cat && x.anio===anio && x.mes===mes && x.periodo==='Mensual')
+      return { mes, meta: o?.meta||0, real: o?.real_alcanzado||0, id: o?.id||null }
+    })
 
-  function render() {
-    const rows = getFiltered()
-    // Tarjetas
-    document.getElementById('cards-obj').innerHTML = CATS.map(cat => {
-      const o = rows.find(x => x.categoria === cat) || { real_alcanzado:0, meta:0 }
-      const pct = o.meta > 0 ? Math.round(o.real_alcanzado / o.meta * 100) : 0
-      const col = COLS[cat] || '#94a3b8'
-      return `<div class="card">
-        <div class="card-label">${cat}</div>
-        <div class="card-value" style="color:${col}">${o.real_alcanzado}<span style="font-size:13px;color:#94a3b8">/${o.meta}</span></div>
-        <div class="card-sub">${pct}% alcanzado</div>
-        <div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${col}"></div></div>
-      </div>`
-    }).join('')
+    document.getElementById('tabla-titulo').textContent = `${cat} — ${anio}`
 
-    // Tabla
-    document.getElementById('tbody-obj').innerHTML = CATS.map(cat => {
-      const o = rows.find(x => x.categoria === cat) || { id:null, real_alcanzado:0, meta:0 }
-      const pct = o.meta > 0 ? Math.round(o.real_alcanzado / o.meta * 100) : 0
-      const col = COLS[cat] || '#94a3b8'
-      const diff = o.real_alcanzado - o.meta
-      return `<tr>
-        <td style="font-weight:500">${cat}</td>
-        <td>${o.real_alcanzado}</td>
-        <td>${o.meta}</td>
+    // Totales acumulados
+    const hoy = anio === anioActual ? mesActual : (anio < anioActual ? 12 : 0)
+    const totalMeta  = mesData.reduce((s,m) => s + m.meta, 0)
+    const totalReal  = mesData.reduce((s,m) => s + m.real, 0)
+    const hastaReal  = mesData.filter(m => m.mes <= hoy).reduce((s,m) => s + m.real, 0)
+    const hastaMeta  = mesData.filter(m => m.mes <= hoy).reduce((s,m) => s + m.meta, 0)
+    const pctAnual   = totalMeta > 0 ? Math.round(totalReal/totalMeta*100) : 0
+    const pctHasta   = hastaMeta > 0 ? Math.round(hastaReal/hastaMeta*100) : 0
+
+    // Trimestres y semestres
+    const trim = [0,1,2,3].map(t => ({
+      meta: mesData.slice(t*3, t*3+3).reduce((s,m)=>s+m.meta,0),
+      real: mesData.slice(t*3, t*3+3).reduce((s,m)=>s+m.real,0),
+    }))
+    const sem = [0,1].map(s => ({
+      meta: mesData.slice(s*6, s*6+6).reduce((a,m)=>a+m.meta,0),
+      real: mesData.slice(s*6, s*6+6).reduce((a,m)=>a+m.real,0),
+    }))
+
+    // Tarjetas resumen
+    document.getElementById('cards-resumen').innerHTML = [
+      { label:'Hasta la fecha', real:hastaReal, meta:hastaMeta, pct:pctHasta, col },
+      { label:'Anual',          real:totalReal,  meta:totalMeta,  pct:pctAnual,  col },
+      { label:'1er semestre',   real:sem[0].real, meta:sem[0].meta, pct:sem[0].meta>0?Math.round(sem[0].real/sem[0].meta*100):0, col },
+      { label:'2do semestre',   real:sem[1].real, meta:sem[1].meta, pct:sem[1].meta>0?Math.round(sem[1].real/sem[1].meta*100):0, col },
+    ].map(c => `
+      <div class="card">
+        <div class="card-label">${c.label}</div>
+        <div class="card-value" style="color:${c.col}">${c.real}<span style="font-size:13px;color:#94a3b8">/${c.meta}</span></div>
+        <div class="card-sub">${c.pct}% alcanzado</div>
+        <div class="progress-bar"><div class="progress-fill" style="width:${c.pct}%;background:${c.col}"></div></div>
+      </div>`).join('')
+
+    // Tabla mensual con separadores trimestrales
+    document.getElementById('tbody-meses').innerHTML = mesData.map((m, i) => {
+      const pct  = m.meta > 0 ? Math.round(m.real/m.meta*100) : 0
+      const diff = m.real - m.meta
+      const esFuturo = anio === anioActual && m.mes > mesActual
+      const borderTop = (i===3||i===6||i===9) ? 'border-top:2px solid #e2e8f0' : ''
+      const trimLabel = i===0?'Q1':i===3?'Q2':i===6?'Q3':i===9?'Q4':''
+      return `<tr style="${borderTop};${esFuturo?'opacity:0.45':''}">
+        <td style="font-weight:500">
+          ${trimLabel ? `<span style="font-size:9px;background:#f1f5f9;color:#64748b;padding:1px 5px;border-radius:3px;margin-right:5px">${trimLabel}</span>` : ''}
+          ${MESES[i]}
+        </td>
+        <td>${m.meta}</td>
+        <td style="font-weight:500;color:${col}">${m.real}</td>
         <td>
-          <div style="width:70px;height:6px;background:#f1f5f9;border-radius:3px;display:inline-block;vertical-align:middle;margin-right:5px">
-            <div style="width:${pct}%;height:100%;background:${col};border-radius:3px"></div>
+          <div style="width:80px;height:6px;background:#f1f5f9;border-radius:3px;display:inline-block;vertical-align:middle;margin-right:5px">
+            <div style="width:${Math.min(pct,100)}%;height:100%;background:${col};border-radius:3px"></div>
           </div>
-          <span style="font-weight:500;color:${col}">${pct}%</span>
+          <span style="font-size:11px;font-weight:500;color:${col}">${pct}%</span>
         </td>
         <td style="color:${diff>=0?'#10b981':'#ef4444'};font-weight:500">${diff>=0?'+':''}${diff}</td>
+        <td>
+          <button class="action-btn action-edit" onclick="window._edit('${m.id}','${cat}',${anio},${m.mes},${m.meta},${m.real})">Editar</button>
+        </td>
       </tr>`
     }).join('')
 
-    // Gráfico
-    const maxVal = Math.max(...CATS.map(cat => {
-      const o = rows.find(x => x.categoria === cat) || { meta:0 }
-      return o.meta
-    }), 1)
-    document.getElementById('chart-wrap').innerHTML = CATS.map(cat => {
-      const o = rows.find(x => x.categoria === cat) || { real_alcanzado:0, meta:0 }
-      const col = COLS[cat] || '#94a3b8'
-      const hReal = Math.round((o.real_alcanzado / maxVal) * 140)
-      const hMeta = Math.round((o.meta / maxVal) * 140)
-      const label = cat.split(' ')[0]
-      return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px">
-        <div style="flex:1;width:100%;display:flex;align-items:flex-end;gap:3px;justify-content:center">
-          <div style="height:${hReal}px;width:16px;background:${col};border-radius:3px 3px 0 0"></div>
-          <div style="height:${hMeta}px;width:16px;background:#e2e8f0;border-radius:3px 3px 0 0"></div>
-        </div>
-        <div style="font-size:10px;font-weight:500;color:${col}">${o.real_alcanzado}</div>
-        <div style="font-size:9px;color:#94a3b8;text-align:center">${label}</div>
-      </div>`
-    }).join('')
-
-    // Histórico
-    const years = [...new Set(allObj.filter(o => o.periodo==='Anual').map(o => o.anio))].sort((a,b) => b-a)
-    document.getElementById('historico-wrap').innerHTML = years.map(y => {
-      const yRows = allObj.filter(o => o.periodo==='Anual' && o.anio===y)
-      return `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:0.5px solid #f1f5f9">
-        <div style="font-size:12px;font-weight:500;width:40px;flex-shrink:0">${y}</div>
-        <div style="flex:1;display:flex;flex-direction:column;gap:4px">
-          ${CATS.map(cat => {
-            const o = yRows.find(x => x.categoria===cat)
-            if (!o) return ''
-            const pct = o.meta > 0 ? Math.round(o.real_alcanzado/o.meta*100) : 0
-            const col = COLS[cat]
-            return `<div style="display:flex;align-items:center;gap:6px">
-              <span style="font-size:10px;color:#64748b;width:130px;flex-shrink:0">${cat}</span>
-              <div style="flex:1;height:8px;background:#f1f5f9;border-radius:4px">
-                <div style="width:${pct}%;height:100%;background:${col};border-radius:4px;opacity:${y===anio?1:0.5}"></div>
-              </div>
-              <span style="font-size:10px;color:#94a3b8;width:50px;text-align:right">${o.real_alcanzado}/${o.meta}</span>
-            </div>`
-          }).join('')}
-        </div>
-      </div>`
-    }).join('')
+    // Pie con totales
+    document.getElementById('tfoot-totales').innerHTML = `
+      <tr style="border-top:2px solid #e2e8f0;background:#f8fafc">
+        <td style="font-weight:500;font-size:12px">Total anual</td>
+        <td style="font-weight:500">${totalMeta}</td>
+        <td style="font-weight:500;color:${col}">${totalReal}</td>
+        <td>
+          <div style="width:80px;height:6px;background:#f1f5f9;border-radius:3px;display:inline-block;vertical-align:middle;margin-right:5px">
+            <div style="width:${Math.min(pctAnual,100)}%;height:100%;background:${col};border-radius:3px"></div>
+          </div>
+          <span style="font-size:11px;font-weight:500;color:${col}">${pctAnual}%</span>
+        </td>
+        <td style="color:${totalReal-totalMeta>=0?'#10b981':'#ef4444'};font-weight:500">${totalReal-totalMeta>=0?'+':''}${totalReal-totalMeta}</td>
+        <td></td>
+      </tr>
+      <tr style="background:#f8fafc">
+        <td style="font-weight:500;font-size:12px;color:#3b82f6">Hasta la fecha</td>
+        <td style="font-weight:500">${hastaMeta}</td>
+        <td style="font-weight:500;color:${col}">${hastaReal}</td>
+        <td>
+          <div style="width:80px;height:6px;background:#f1f5f9;border-radius:3px;display:inline-block;vertical-align:middle;margin-right:5px">
+            <div style="width:${Math.min(pctHasta,100)}%;height:100%;background:${col};border-radius:3px"></div>
+          </div>
+          <span style="font-size:11px;font-weight:500;color:${col}">${pctHasta}%</span>
+        </td>
+        <td style="color:${hastaReal-hastaMeta>=0?'#10b981':'#ef4444'};font-weight:500">${hastaReal-hastaMeta>=0?'+':''}${hastaReal-hastaMeta}</td>
+        <td></td>
+      </tr>
+      ${[0,1,2,3].map((t,i) => {
+        const pctT = trim[t].meta>0 ? Math.round(trim[t].real/trim[t].meta*100) : 0
+        const diffT = trim[t].real - trim[t].meta
+        return `<tr style="background:#fafafa">
+          <td style="font-weight:500;font-size:11px;color:#64748b">Q${t+1} (${MESES[t*3].slice(0,3)}–${MESES[t*3+2].slice(0,3)})</td>
+          <td style="font-size:11px">${trim[t].meta}</td>
+          <td style="font-size:11px;color:${col};font-weight:500">${trim[t].real}</td>
+          <td><span style="font-size:11px;color:${col}">${pctT}%</span></td>
+          <td style="font-size:11px;color:${diffT>=0?'#10b981':'#ef4444'};font-weight:500">${diffT>=0?'+':''}${diffT}</td>
+          <td></td>
+        </tr>`
+      }).join('')}`
   }
 
-  window.cambiarPeriodo = () => { periodo = document.getElementById('sel-periodo').value; render() }
-
-  window.openModal = (id) => {
-    editId = id || null
-    if (id) {
-      const o = allObj.find(x => x.id === id)
-      document.getElementById('f-cat').value    = o.categoria
-      document.getElementById('f-periodo').value = o.periodo
-      document.getElementById('f-anio').value   = o.anio
-      document.getElementById('f-meta').value   = o.meta
-      document.getElementById('f-real').value   = o.real_alcanzado
-    } else {
-      document.getElementById('f-cat').value    = 'Prospectos'
-      document.getElementById('f-periodo').value = periodo
-      document.getElementById('f-anio').value   = anio
-      document.getElementById('f-meta').value   = ''
-      document.getElementById('f-real').value   = ''
-    }
+  window.openModal = (id, cat, anio, mes, meta, real) => {
+    editId = id && id!=='null' ? id : null
+    document.getElementById('modal-title-text').textContent = editId ? 'Editar mes' : 'Cargar mes'
+    document.getElementById('f-cat').value  = cat  || document.getElementById('sel-cat').value
+    document.getElementById('f-anio').value = anio || document.getElementById('sel-anio').value
+    document.getElementById('f-mes').value  = mes  || (new Date().getMonth()+1)
+    document.getElementById('f-meta').value = meta || ''
+    document.getElementById('f-real').value = real || ''
     document.getElementById('modal').classList.add('open')
   }
 
   window.closeModal = () => document.getElementById('modal').classList.remove('open')
 
-  window.guardarObj = async () => {
+  window.guardar = async () => {
     const payload = {
-      categoria:       document.getElementById('f-cat').value,
-      periodo:         document.getElementById('f-periodo').value,
-      anio:            parseInt(document.getElementById('f-anio').value),
-      meta:            parseInt(document.getElementById('f-meta').value) || 0,
-      real_alcanzado:  parseInt(document.getElementById('f-real').value) || 0,
+      categoria:      document.getElementById('f-cat').value,
+      periodo:        'Mensual',
+      anio:           parseInt(document.getElementById('f-anio').value),
+      mes:            parseInt(document.getElementById('f-mes').value),
+      trimestre:      Math.ceil(parseInt(document.getElementById('f-mes').value)/3),
+      meta:           parseInt(document.getElementById('f-meta').value)||0,
+      real_alcanzado: parseInt(document.getElementById('f-real').value)||0,
     }
     if (editId) {
       await supabase.from('objectives').update(payload).eq('id', editId)
@@ -267,6 +300,8 @@
     }
     closeModal(); fetchAll()
   }
+
+  window._edit = (id, cat, anio, mes, meta, real) => openModal(id, cat, anio, mes, meta, real)
 
   fetchAll()
 </script>
