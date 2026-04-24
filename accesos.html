@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Accesos Directos — Desarrollo de Fondos</title>
+  <link rel="stylesheet" href="./css/style.css">
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar" id="sidebar"></aside>
+  <div class="main">
+    <div class="topbar">
+      <div>
+        <div class="topbar-title">Accesos Directos</div>
+        <div class="topbar-sub">Links, usuarios y claves</div>
+      </div>
+      <button class="btn-primary" onclick="openModal()">+ Nuevo acceso</button>
+    </div>
+
+    <div class="filter-row">
+      <button class="btn-filter active" onclick="setCat('',this)">Todos</button>
+      <button class="btn-filter" onclick="setCat('Drive',this)">Drive</button>
+      <button class="btn-filter" onclick="setCat('Redes',this)">Redes</button>
+      <button class="btn-filter" onclick="setCat('CRM',this)">CRM</button>
+      <button class="btn-filter" onclick="setCat('Banco',this)">Banco</button>
+    </div>
+
+    <div class="box">
+      <div style="overflow-x:auto">
+        <table>
+          <thead><tr>
+            <th>Nombre</th><th>Categoría</th><th>URL</th><th>Usuario</th><th>Clave</th><th>Nota</th><th></th>
+          </tr></thead>
+          <tbody id="tbody-accesos"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal -->
+<div class="modal-bg" id="modal">
+  <div class="modal">
+    <div class="modal-title">
+      <span id="modal-title-text">Nuevo acceso</span>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    <div class="form-grid">
+      <div class="form-group"><label>Nombre</label><input type="text" id="f-nombre" placeholder="Nombre del acceso"></div>
+      <div class="form-group"><label>Categoría</label>
+        <select id="f-cat">
+          <option value="">Seleccionar</option>
+          <option>Drive</option><option>Redes</option><option>CRM</option><option>Banco</option><option>Otro</option>
+        </select>
+      </div>
+      <div class="form-group full"><label>URL</label><input type="url" id="f-url" placeholder="https://..."></div>
+      <div class="form-group"><label>Usuario</label><input type="text" id="f-usuario" placeholder="usuario@mail.com"></div>
+      <div class="form-group"><label>Clave</label><input type="password" id="f-clave" placeholder="••••••••"></div>
+      <div class="form-group full"><label>Nota</label><textarea id="f-nota" rows="2"></textarea></div>
+    </div>
+    <div class="form-actions">
+      <button class="btn-secondary" onclick="closeModal()">Cancelar</button>
+      <button class="btn-primary" onclick="guardar()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
+
+  const supabase = createClient(
+    'https://hoyqbbeycpgmqydkvznb.supabase.co',
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhveXFiYmV5Y3BnbXF5ZGt2em5iIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcwMzk1NDMsImV4cCI6MjA5MjYxNTU0M30.zIjCzGds1r_Hxq_gZfYFGeFawIaiVp1uhIfPwtgEy0w'
+  )
+
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) window.location.href = '/index.html'
+
+  const navItems = [
+    { href:'/dashboard.html',     label:'Dashboard',        color:'#60a5fa', section:'Principal' },
+    { href:'/tareas.html',        label:'Tareas',           color:'#f59e0b', section:'Gestión' },
+    { href:'/objetivos.html',     label:'Objetivos',        color:'#10b981', section:'Gestión' },
+    { href:'/donantes.html',      label:'Grandes Donantes', color:'#a78bfa', section:'Gestión' },
+    { href:'/accesos.html',       label:'Accesos Directos', color:'#6ee7b7', section:'Otros' },
+    { href:'/configuracion.html', label:'Configuración',    color:'#94a3b8', section:'Otros' },
+  ]
+  const sections = ['Principal','Gestión','Otros']
+  document.getElementById('sidebar').innerHTML = `
+    <div style="padding:20px 16px 16px;border-bottom:0.5px solid rgba(255,255,255,0.08)">
+      <div style="font-size:10px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:1px">Fundraising</div>
+      <div style="font-size:13px;color:#fff;font-weight:500;margin-top:3px">Gestor de Tareas</div>
+    </div>
+    ${sections.map(sec => `
+      <div style="padding:12px 12px 4px;font-size:10px;color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:1px">${sec}</div>
+      ${navItems.filter(n => n.section===sec).map(item => `
+        <a href="${item.href}" class="nav-item ${window.location.pathname.includes(item.href.replace('/','')) ? 'active' : ''}">
+          <div style="width:7px;height:7px;border-radius:50%;background:${item.color};flex-shrink:0"></div>
+          ${item.label}
+        </a>`).join('')}
+    `).join('')}
+    <div style="margin-top:auto;padding:12px 8px">
+      <a class="nav-item" id="btn-signout" style="cursor:pointer;color:rgba(255,255,255,0.35)">
+        <div style="width:7px;height:7px;border-radius:50%;background:#475569;flex-shrink:0"></div>
+        Cerrar sesión
+      </a>
+    </div>`
+  document.getElementById('btn-signout').addEventListener('click', async () => { await supabase.auth.signOut(); window.location.href = '/index.html' })
+
+  let allAccesos = [], filtroCat = '', editId = null, visibles = {}
+
+  async function fetchAll() {
+    const { data } = await supabase.from('shortcuts').select('*').order('nombre')
+    allAccesos = data || []
+    render()
+  }
+
+  function render() {
+    const rows = allAccesos.filter(a => !filtroCat || a.categoria === filtroCat)
+    const CAT_STYLE = { 'Drive':'background:#dcfce7;color:#166534','Redes':'background:#fef3c7;color:#92400e','CRM':'background:#dbeafe;color:#1e40af','Banco':'background:#f3e8ff;color:#6b21a8','Otro':'background:#f1f5f9;color:#64748b' }
+    document.getElementById('tbody-accesos').innerHTML = rows.length === 0
+      ? `<tr><td colspan="7" style="text-align:center;padding:24px;color:#94a3b8">Sin accesos para este filtro</td></tr>`
+      : rows.map(a => `
+        <tr>
+          <td style="font-weight:500">${a.nombre}</td>
+          <td>${a.categoria ? `<span class="tag" style="${CAT_STYLE[a.categoria]||''}">${a.categoria}</span>` : '—'}</td>
+          <td>${a.url ? `<a href="${a.url}" target="_blank" style="color:#3b82f6;font-size:11px">${a.url.replace('https://','').split('/')[0]}</a>` : '—'}</td>
+          <td style="font-size:12px">${a.usuario||'—'}</td>
+          <td>
+            <span id="clave-${a.id}" style="letter-spacing:2px;color:#94a3b8;font-size:12px">${visibles[a.id] ? (a.clave||'—') : '••••••'}</span>
+            <button class="eye-btn" onclick="toggleClave('${a.id}')">👁</button>
+          </td>
+          <td style="color:#94a3b8;font-size:11px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${a.nota||'—'}</td>
+          <td style="white-space:nowrap">
+            <button class="action-btn action-edit" onclick="window._edit('${a.id}')">Editar</button>
+            <button class="action-btn action-delete" onclick="window._del('${a.id}')">✕</button>
+          </td>
+        </tr>`).join('')
+  }
+
+  window.toggleClave = (id) => {
+    visibles[id] = !visibles[id]
+    const a = allAccesos.find(x => x.id === id)
+    document.getElementById('clave-'+id).textContent = visibles[id] ? (a?.clave||'—') : '••••••'
+  }
+
+  window.setCat = (c, el) => {
+    filtroCat = c
+    document.querySelectorAll('.btn-filter').forEach(b => b.classList.remove('active'))
+    el.classList.add('active')
+    render()
+  }
+
+  window.openModal = (id) => {
+    editId = id || null
+    document.getElementById('modal-title-text').textContent = id ? 'Editar acceso' : 'Nuevo acceso'
+    if (id) {
+      const a = allAccesos.find(x => x.id === id)
+      document.getElementById('f-nombre').value  = a.nombre
+      document.getElementById('f-cat').value     = a.categoria || ''
+      document.getElementById('f-url').value     = a.url || ''
+      document.getElementById('f-usuario').value = a.usuario || ''
+      document.getElementById('f-clave').value   = a.clave || ''
+      document.getElementById('f-nota').value    = a.nota || ''
+    } else {
+      ['f-nombre','f-url','f-usuario','f-clave','f-nota'].forEach(i => document.getElementById(i).value = '')
+      document.getElementById('f-cat').value = ''
+    }
+    document.getElementById('modal').classList.add('open')
+  }
+
+  window.closeModal = () => document.getElementById('modal').classList.remove('open')
+
+  window.guardar = async () => {
+    const nombre = document.getElementById('f-nombre').value.trim()
+    if (!nombre) return alert('El nombre no puede estar vacío')
+    const payload = {
+      nombre,
+      categoria: document.getElementById('f-cat').value     || null,
+      url:       document.getElementById('f-url').value     || null,
+      usuario:   document.getElementById('f-usuario').value || null,
+      clave:     document.getElementById('f-clave').value   || null,
+      nota:      document.getElementById('f-nota').value    || null,
+    }
+    if (editId) {
+      await supabase.from('shortcuts').update(payload).eq('id', editId)
+    } else {
+      await supabase.from('shortcuts').insert(payload)
+    }
+    closeModal(); fetchAll()
+  }
+
+  window._edit = id => openModal(id)
+  window._del  = async id => {
+    if (confirm('¿Eliminar este acceso?')) {
+      await supabase.from('shortcuts').delete().eq('id', id)
+      fetchAll()
+    }
+  }
+
+  fetchAll()
+</script>
+</body>
+</html>
