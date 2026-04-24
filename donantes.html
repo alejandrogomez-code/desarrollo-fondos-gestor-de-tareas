@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Grandes Donantes — Desarrollo de Fondos</title>
+  <link rel="stylesheet" href="./css/style.css">
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar" id="sidebar"></aside>
+  <div class="main">
+    <div class="topbar">
+      <div>
+        <div class="topbar-title">Grandes Donantes</div>
+        <div class="topbar-sub">Directorio de contactos</div>
+      </div>
+      <button class="btn-primary" onclick="openModal()">+ Nuevo donante</button>
+    </div>
+
+    <div style="display:flex;gap:8px;margin-bottom:14px;align-items:center">
+      <input type="text" id="buscador" placeholder="Buscar donante..." oninput="render()" style="width:240px;font-size:12px;padding:7px 10px;border-radius:6px;border:0.5px solid #e2e8f0">
+      <button class="btn-filter active" onclick="setEstado('',this)">Todos</button>
+      <button class="btn-filter" onclick="setEstado('Activo',this)">Activo</button>
+      <button class="btn-filter" onclick="setEstado('Por renovar',this)">Por renovar</button>
+      <button class="btn-filter" onclick="setEstado('En contacto',this)">En contacto</button>
+    </div>
+
+    <div id="lista-donantes"></div>
+  </div>
+</div>
+
+<!-- Modal -->
+<div class="modal-bg" id="modal">
+  <div class="modal">
+    <div class="modal-title">
+      <span id="modal-title-text">Nuevo donante</span>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    <div class="form-grid">
+      <div class="form-group full"><label>Nombre</label><input type="text" id="f-nombre" placeholder="Nombre completo"></div>
+      <div class="form-group"><label>Organización</label><input type="text" id="f-org" placeholder="Empresa u org."></div>
+      <div class="form-group"><label>Mail</label><input type="email" id="f-mail" placeholder="email@ejemplo.com"></div>
+      <div class="form-group"><label>Teléfono</label><input type="text" id="f-tel" placeholder="+54 351 000-0000"></div>
+      <div class="form-group"><label>Categoría</label>
+        <select id="f-cat">
+          <option value="">Seleccionar</option>
+          <option>Grande Donante</option><option>Prospecto</option>
+          <option>Renovado</option><option>Recuperado</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Estado</label>
+        <select id="f-estado">
+          <option>Activo</option><option>Por renovar</option>
+          <option>En contacto</option><option>Inactivo</option>
+        </select>
+      </div>
+      <div class="form-group full"><label>Nota</label><textarea id="f-nota" rows="3"></textarea></div>
+    </div>
+    <div class="form-actions">
+      <button class="btn-secondary" onclick="closeModal()">Cancelar</button>
+      <button class="btn-primary" onclick="guardar()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
+
+  const supabase = createClient(
+    'https://hoyqbbeycpgmqydkvznb.supabase.co',
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhveXFiYmV5Y3BnbXF5ZGt2em5iIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcwMzk1NDMsImV4cCI6MjA5MjYxNTU0M30.zIjCzGds1r_Hxq_gZfYFGeFawIaiVp1uhIfPwtgEy0w'
+  )
+
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) window.location.href = '/index.html'
+
+  const navItems = [
+    { href:'/dashboard.html',     label:'Dashboard',        color:'#60a5fa', section:'Principal' },
+    { href:'/tareas.html',        label:'Tareas',           color:'#f59e0b', section:'Gestión' },
+    { href:'/objetivos.html',     label:'Objetivos',        color:'#10b981', section:'Gestión' },
+    { href:'/donantes.html',      label:'Grandes Donantes', color:'#a78bfa', section:'Gestión' },
+    { href:'/accesos.html',       label:'Accesos Directos', color:'#6ee7b7', section:'Otros' },
+    { href:'/configuracion.html', label:'Configuración',    color:'#94a3b8', section:'Otros' },
+  ]
+  const sections = ['Principal','Gestión','Otros']
+  document.getElementById('sidebar').innerHTML = `
+    <div style="padding:20px 16px 16px;border-bottom:0.5px solid rgba(255,255,255,0.08)">
+      <div style="font-size:10px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:1px">Fundraising</div>
+      <div style="font-size:13px;color:#fff;font-weight:500;margin-top:3px">Gestor de Tareas</div>
+    </div>
+    ${sections.map(sec => `
+      <div style="padding:12px 12px 4px;font-size:10px;color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:1px">${sec}</div>
+      ${navItems.filter(n => n.section===sec).map(item => `
+        <a href="${item.href}" class="nav-item ${window.location.pathname.includes(item.href.replace('/','')) ? 'active' : ''}">
+          <div style="width:7px;height:7px;border-radius:50%;background:${item.color};flex-shrink:0"></div>
+          ${item.label}
+        </a>`).join('')}
+    `).join('')}
+    <div style="margin-top:auto;padding:12px 8px">
+      <a class="nav-item" id="btn-signout" style="cursor:pointer;color:rgba(255,255,255,0.35)">
+        <div style="width:7px;height:7px;border-radius:50%;background:#475569;flex-shrink:0"></div>
+        Cerrar sesión
+      </a>
+    </div>`
+  document.getElementById('btn-signout').addEventListener('click', async () => { await supabase.auth.signOut(); window.location.href = '/index.html' })
+
+  const ESTADO_STYLE = {
+    'Activo':       'background:#d1fae5;color:#065f46',
+    'Por renovar':  'background:#fef3c7;color:#92400e',
+    'En contacto':  'background:#dbeafe;color:#1e40af',
+    'Inactivo':     'background:#f1f5f9;color:#64748b',
+  }
+
+  let allContacts = [], filtroEstado = '', editId = null
+
+  async function fetchAll() {
+    const { data } = await supabase.from('contacts').select('*').order('nombre')
+    allContacts = data || []
+    render()
+  }
+
+  window.render = () => {
+    const q = document.getElementById('buscador').value.toLowerCase()
+    const rows = allContacts.filter(c =>
+      (!filtroEstado || c.estado === filtroEstado) &&
+      (!q || c.nombre.toLowerCase().includes(q) || (c.organizacion||'').toLowerCase().includes(q))
+    )
+    document.getElementById('lista-donantes').innerHTML = rows.length === 0
+      ? `<div style="text-align:center;padding:40px;color:#94a3b8;font-size:13px">Sin donantes para este filtro</div>`
+      : rows.map(c => {
+          const initials = c.nombre.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase()
+          return `<div class="contact-card">
+            <div class="avatar">${initials}</div>
+            <div style="flex:1">
+              <div style="font-size:13px;font-weight:500;color:#0f172a">${c.nombre}</div>
+              <div style="font-size:11px;color:#64748b;margin-top:2px">
+                ${c.organizacion ? c.organizacion + ' · ' : ''}
+                ${c.mail ? c.mail + ' · ' : ''}
+                ${c.telefono || ''}
+              </div>
+              ${c.nota ? `<div style="font-size:11px;color:#94a3b8;margin-top:2px">${c.nota}</div>` : ''}
+            </div>
+            ${c.categoria ? `<span class="tag" style="background:#f3e8ff;color:#6b21a8">${c.categoria}</span>` : ''}
+            <span class="badge" style="${ESTADO_STYLE[c.estado]||''}">${c.estado}</span>
+            <div style="display:flex;gap:4px">
+              <button class="action-btn action-edit" onclick="window._edit('${c.id}')">Editar</button>
+              <button class="action-btn action-delete" onclick="window._del('${c.id}')">✕</button>
+            </div>
+          </div>`
+        }).join('')
+  }
+
+  window.setEstado = (e, el) => {
+    filtroEstado = e
+    document.querySelectorAll('.btn-filter').forEach(b => b.classList.remove('active'))
+    el.classList.add('active')
+    render()
+  }
+
+  window.openModal = (id) => {
+    editId = id || null
+    document.getElementById('modal-title-text').textContent = id ? 'Editar donante' : 'Nuevo donante'
+    if (id) {
+      const c = allContacts.find(x => x.id === id)
+      document.getElementById('f-nombre').value = c.nombre
+      document.getElementById('f-org').value    = c.organizacion || ''
+      document.getElementById('f-mail').value   = c.mail || ''
+      document.getElementById('f-tel').value    = c.telefono || ''
+      document.getElementById('f-cat').value    = c.categoria || ''
+      document.getElementById('f-estado').value = c.estado
+      document.getElementById('f-nota').value   = c.nota || ''
+    } else {
+      ['f-nombre','f-org','f-mail','f-tel','f-nota'].forEach(i => document.getElementById(i).value = '')
+      document.getElementById('f-cat').value    = ''
+      document.getElementById('f-estado').value = 'Activo'
+    }
+    document.getElementById('modal').classList.add('open')
+  }
+
+  window.closeModal = () => document.getElementById('modal').classList.remove('open')
+
+  window.guardar = async () => {
+    const nombre = document.getElementById('f-nombre').value.trim()
+    if (!nombre) return alert('El nombre no puede estar vacío')
+    const payload = {
+      nombre,
+      organizacion: document.getElementById('f-org').value    || null,
+      mail:         document.getElementById('f-mail').value   || null,
+      telefono:     document.getElementById('f-tel').value    || null,
+      categoria:    document.getElementById('f-cat').value    || null,
+      estado:       document.getElementById('f-estado').value,
+      nota:         document.getElementById('f-nota').value   || null,
+    }
+    if (editId) {
+      await supabase.from('contacts').update(payload).eq('id', editId)
+    } else {
+      await supabase.from('contacts').insert(payload)
+    }
+    closeModal(); fetchAll()
+  }
+
+  window._edit = id => openModal(id)
+  window._del  = async id => {
+    if (confirm('¿Eliminar este donante?')) {
+      await supabase.from('contacts').delete().eq('id', id)
+      fetchAll()
+    }
+  }
+
+  fetchAll()
+</script>
+</body>
+</html>
