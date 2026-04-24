@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Objetivos — Desarrollo de Fondos</title>
+  <link rel="stylesheet" href="./css/style.css">
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar" id="sidebar"></aside>
+  <div class="main">
+    <div class="topbar">
+      <div>
+        <div class="topbar-title">Objetivos y Seguimiento</div>
+        <div class="topbar-sub">Cantidad de personas por categoría</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <select id="sel-periodo" onchange="cambiarPeriodo()" style="font-size:12px;padding:6px 10px;border-radius:6px;border:0.5px solid #e2e8f0">
+          <option value="Anual">Anual</option>
+          <option value="Trimestral">Trimestral</option>
+          <option value="Mensual">Mensual</option>
+        </select>
+        <button class="btn-primary" onclick="openModal()">+ Editar metas</button>
+      </div>
+    </div>
+
+    <!-- Tarjetas -->
+    <div class="cards-grid" style="grid-template-columns:repeat(5,1fr)" id="cards-obj"></div>
+
+    <div class="grid-2">
+      <!-- Tabla detalle -->
+      <div class="box">
+        <div class="box-header"><span class="box-title">Detalle por categoría</span></div>
+        <table>
+          <thead><tr><th>Categoría</th><th>Real</th><th>Meta</th><th>Avance</th><th>Diferencia</th></tr></thead>
+          <tbody id="tbody-obj"></tbody>
+        </table>
+      </div>
+
+      <!-- Gráfico -->
+      <div class="box">
+        <div class="box-header">
+          <span class="box-title">Gráfico de avance</span>
+          <span style="font-size:11px;color:#64748b">Real vs Meta</span>
+        </div>
+        <div id="chart-wrap" style="padding:14px;display:flex;align-items:flex-end;gap:8px;height:200px"></div>
+        <div style="display:flex;gap:14px;padding:10px 14px;flex-wrap:wrap">
+          <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:#64748b">
+            <div style="width:8px;height:8px;border-radius:2px;background:#3b82f6"></div>Real alcanzado
+          </div>
+          <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:#64748b">
+            <div style="width:8px;height:8px;border-radius:2px;background:#e2e8f0"></div>Meta total
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Histórico -->
+    <div class="box">
+      <div class="box-header"><span class="box-title">Histórico de objetivos</span></div>
+      <div id="historico-wrap" style="padding:0 14px"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal editar meta -->
+<div class="modal-bg" id="modal">
+  <div class="modal">
+    <div class="modal-title">
+      <span>Editar meta</span>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    <div class="form-grid">
+      <div class="form-group"><label>Categoría</label>
+        <select id="f-cat">
+          <option>Prospectos</option><option>Recuperados</option><option>Renovados</option>
+          <option>Grandes donantes</option><option>Testamento Solidario</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Período</label>
+        <select id="f-periodo"><option>Anual</option><option>Trimestral</option><option>Mensual</option></select>
+      </div>
+      <div class="form-group"><label>Año</label><input type="number" id="f-anio" value="2026"></div>
+      <div class="form-group"><label>Meta (personas)</label><input type="number" id="f-meta" placeholder="0"></div>
+      <div class="form-group"><label>Real alcanzado</label><input type="number" id="f-real" placeholder="0"></div>
+    </div>
+    <div class="form-actions">
+      <button class="btn-secondary" onclick="closeModal()">Cancelar</button>
+      <button class="btn-primary" onclick="guardarObj()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
+
+  const supabase = createClient(
+    'https://hoyqbbeycpgmqydkvznb.supabase.co',
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhveXFiYmV5Y3BnbXF5ZGt2em5iIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcwMzk1NDMsImV4cCI6MjA5MjYxNTU0M30.zIjCzGds1r_Hxq_gZfYFGeFawIaiVp1uhIfPwtgEy0w'
+  )
+
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) window.location.href = '/index.html'
+
+  const navItems = [
+    { href:'/dashboard.html',     label:'Dashboard',        color:'#60a5fa', section:'Principal' },
+    { href:'/tareas.html',        label:'Tareas',           color:'#f59e0b', section:'Gestión' },
+    { href:'/objetivos.html',     label:'Objetivos',        color:'#10b981', section:'Gestión' },
+    { href:'/donantes.html',      label:'Grandes Donantes', color:'#a78bfa', section:'Gestión' },
+    { href:'/accesos.html',       label:'Accesos Directos', color:'#6ee7b7', section:'Otros' },
+    { href:'/configuracion.html', label:'Configuración',    color:'#94a3b8', section:'Otros' },
+  ]
+  const sections = ['Principal','Gestión','Otros']
+  document.getElementById('sidebar').innerHTML = `
+    <div style="padding:20px 16px 16px;border-bottom:0.5px solid rgba(255,255,255,0.08)">
+      <div style="font-size:10px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:1px">Fundraising</div>
+      <div style="font-size:13px;color:#fff;font-weight:500;margin-top:3px">Gestor de Tareas</div>
+    </div>
+    ${sections.map(sec => `
+      <div style="padding:12px 12px 4px;font-size:10px;color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:1px">${sec}</div>
+      ${navItems.filter(n => n.section===sec).map(item => `
+        <a href="${item.href}" class="nav-item ${window.location.pathname.includes(item.href.replace('/','')) ? 'active' : ''}">
+          <div style="width:7px;height:7px;border-radius:50%;background:${item.color};flex-shrink:0"></div>
+          ${item.label}
+        </a>`).join('')}
+    `).join('')}
+    <div style="margin-top:auto;padding:12px 8px">
+      <a class="nav-item" id="btn-signout" style="cursor:pointer;color:rgba(255,255,255,0.35)">
+        <div style="width:7px;height:7px;border-radius:50%;background:#475569;flex-shrink:0"></div>
+        Cerrar sesión
+      </a>
+    </div>`
+  document.getElementById('btn-signout').addEventListener('click', async () => { await supabase.auth.signOut(); window.location.href = '/index.html' })
+
+  const COLS = { 'Prospectos':'#3b82f6','Recuperados':'#f59e0b','Renovados':'#10b981','Grandes donantes':'#a78bfa','Testamento Solidario':'#6ee7b7' }
+  const CATS = ['Prospectos','Recuperados','Renovados','Grandes donantes','Testamento Solidario']
+  let allObj = [], periodo = 'Anual', editId = null
+  const anio = new Date().getFullYear()
+
+  async function fetchAll() {
+    const { data } = await supabase.from('objectives').select('*').order('categoria')
+    allObj = data || []
+    render()
+  }
+
+  function getFiltered() {
+    return allObj.filter(o => o.periodo === periodo && o.anio === anio)
+  }
+
+  function render() {
+    const rows = getFiltered()
+    // Tarjetas
+    document.getElementById('cards-obj').innerHTML = CATS.map(cat => {
+      const o = rows.find(x => x.categoria === cat) || { real_alcanzado:0, meta:0 }
+      const pct = o.meta > 0 ? Math.round(o.real_alcanzado / o.meta * 100) : 0
+      const col = COLS[cat] || '#94a3b8'
+      return `<div class="card">
+        <div class="card-label">${cat}</div>
+        <div class="card-value" style="color:${col}">${o.real_alcanzado}<span style="font-size:13px;color:#94a3b8">/${o.meta}</span></div>
+        <div class="card-sub">${pct}% alcanzado</div>
+        <div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${col}"></div></div>
+      </div>`
+    }).join('')
+
+    // Tabla
+    document.getElementById('tbody-obj').innerHTML = CATS.map(cat => {
+      const o = rows.find(x => x.categoria === cat) || { id:null, real_alcanzado:0, meta:0 }
+      const pct = o.meta > 0 ? Math.round(o.real_alcanzado / o.meta * 100) : 0
+      const col = COLS[cat] || '#94a3b8'
+      const diff = o.real_alcanzado - o.meta
+      return `<tr>
+        <td style="font-weight:500">${cat}</td>
+        <td>${o.real_alcanzado}</td>
+        <td>${o.meta}</td>
+        <td>
+          <div style="width:70px;height:6px;background:#f1f5f9;border-radius:3px;display:inline-block;vertical-align:middle;margin-right:5px">
+            <div style="width:${pct}%;height:100%;background:${col};border-radius:3px"></div>
+          </div>
+          <span style="font-weight:500;color:${col}">${pct}%</span>
+        </td>
+        <td style="color:${diff>=0?'#10b981':'#ef4444'};font-weight:500">${diff>=0?'+':''}${diff}</td>
+      </tr>`
+    }).join('')
+
+    // Gráfico
+    const maxVal = Math.max(...CATS.map(cat => {
+      const o = rows.find(x => x.categoria === cat) || { meta:0 }
+      return o.meta
+    }), 1)
+    document.getElementById('chart-wrap').innerHTML = CATS.map(cat => {
+      const o = rows.find(x => x.categoria === cat) || { real_alcanzado:0, meta:0 }
+      const col = COLS[cat] || '#94a3b8'
+      const hReal = Math.round((o.real_alcanzado / maxVal) * 140)
+      const hMeta = Math.round((o.meta / maxVal) * 140)
+      const label = cat.split(' ')[0]
+      return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px">
+        <div style="flex:1;width:100%;display:flex;align-items:flex-end;gap:3px;justify-content:center">
+          <div style="height:${hReal}px;width:16px;background:${col};border-radius:3px 3px 0 0"></div>
+          <div style="height:${hMeta}px;width:16px;background:#e2e8f0;border-radius:3px 3px 0 0"></div>
+        </div>
+        <div style="font-size:10px;font-weight:500;color:${col}">${o.real_alcanzado}</div>
+        <div style="font-size:9px;color:#94a3b8;text-align:center">${label}</div>
+      </div>`
+    }).join('')
+
+    // Histórico
+    const years = [...new Set(allObj.filter(o => o.periodo==='Anual').map(o => o.anio))].sort((a,b) => b-a)
+    document.getElementById('historico-wrap').innerHTML = years.map(y => {
+      const yRows = allObj.filter(o => o.periodo==='Anual' && o.anio===y)
+      return `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:0.5px solid #f1f5f9">
+        <div style="font-size:12px;font-weight:500;width:40px;flex-shrink:0">${y}</div>
+        <div style="flex:1;display:flex;flex-direction:column;gap:4px">
+          ${CATS.map(cat => {
+            const o = yRows.find(x => x.categoria===cat)
+            if (!o) return ''
+            const pct = o.meta > 0 ? Math.round(o.real_alcanzado/o.meta*100) : 0
+            const col = COLS[cat]
+            return `<div style="display:flex;align-items:center;gap:6px">
+              <span style="font-size:10px;color:#64748b;width:130px;flex-shrink:0">${cat}</span>
+              <div style="flex:1;height:8px;background:#f1f5f9;border-radius:4px">
+                <div style="width:${pct}%;height:100%;background:${col};border-radius:4px;opacity:${y===anio?1:0.5}"></div>
+              </div>
+              <span style="font-size:10px;color:#94a3b8;width:50px;text-align:right">${o.real_alcanzado}/${o.meta}</span>
+            </div>`
+          }).join('')}
+        </div>
+      </div>`
+    }).join('')
+  }
+
+  window.cambiarPeriodo = () => { periodo = document.getElementById('sel-periodo').value; render() }
+
+  window.openModal = (id) => {
+    editId = id || null
+    if (id) {
+      const o = allObj.find(x => x.id === id)
+      document.getElementById('f-cat').value    = o.categoria
+      document.getElementById('f-periodo').value = o.periodo
+      document.getElementById('f-anio').value   = o.anio
+      document.getElementById('f-meta').value   = o.meta
+      document.getElementById('f-real').value   = o.real_alcanzado
+    } else {
+      document.getElementById('f-cat').value    = 'Prospectos'
+      document.getElementById('f-periodo').value = periodo
+      document.getElementById('f-anio').value   = anio
+      document.getElementById('f-meta').value   = ''
+      document.getElementById('f-real').value   = ''
+    }
+    document.getElementById('modal').classList.add('open')
+  }
+
+  window.closeModal = () => document.getElementById('modal').classList.remove('open')
+
+  window.guardarObj = async () => {
+    const payload = {
+      categoria:       document.getElementById('f-cat').value,
+      periodo:         document.getElementById('f-periodo').value,
+      anio:            parseInt(document.getElementById('f-anio').value),
+      meta:            parseInt(document.getElementById('f-meta').value) || 0,
+      real_alcanzado:  parseInt(document.getElementById('f-real').value) || 0,
+    }
+    if (editId) {
+      await supabase.from('objectives').update(payload).eq('id', editId)
+    } else {
+      await supabase.from('objectives').insert(payload)
+    }
+    closeModal(); fetchAll()
+  }
+
+  fetchAll()
+</script>
+</body>
+</html>
