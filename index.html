@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Desarrollo de Fondos — Login</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: Inter, sans-serif; }
+    body { background: #0f172a; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+    .card { background: #1e293b; border-radius: 12px; padding: 36px; width: 360px; border: 0.5px solid rgba(255,255,255,0.1); }
+    .logo-sub { font-size: 10px; color: rgba(255,255,255,0.4); text-transform: uppercase; letter-spacing: 1px; text-align: center; }
+    .logo-name { font-size: 18px; color: #fff; font-weight: 500; text-align: center; margin-top: 4px; margin-bottom: 28px; }
+    label { font-size: 12px; color: rgba(255,255,255,0.5); display: block; margin-bottom: 6px; }
+    input { width: 100%; padding: 10px 12px; border-radius: 7px; border: 0.5px solid rgba(255,255,255,0.15); background: #0f172a; color: #fff; font-size: 13px; margin-bottom: 14px; }
+    .btn { width: 100%; padding: 11px; border-radius: 7px; background: #1e40af; color: #fff; border: none; font-size: 13px; font-weight: 500; cursor: pointer; margin-top: 6px; }
+    .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+    .error { font-size: 12px; color: #f87171; text-align: center; margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo-sub">Fundraising</div>
+    <div class="logo-name">Gestor de Tareas</div>
+    <form id="login-form">
+      <label>Email</label>
+      <input type="email" id="email" required placeholder="tu@email.com">
+      <label>Contraseña</label>
+      <input type="password" id="password" required placeholder="••••••••">
+      <button type="submit" class="btn" id="btn-login">Ingresar</button>
+      <div class="error" id="error-msg"></div>
+    </form>
+  </div>
+  <script type="module">
+    import { supabase } from './js/supabase.js'
+    const { data: { session } } = await supabase.auth.getSession()
+    if (session) window.location.href = './dashboard.html'
+    document.getElementById('login-form').addEventListener('submit', async e => {
+      e.preventDefault()
+      const btn = document.getElementById('btn-login')
+      btn.disabled = true; btn.textContent = 'Ingresando...'
+      const { error } = await supabase.auth.signInWithPassword({
+        email: document.getElementById('email').value,
+        password: document.getElementById('password').value
+      })
+      if (error) {
+        document.getElementById('error-msg').textContent = 'Email o contraseña incorrectos'
+        btn.disabled = false; btn.textContent = 'Ingresar'
+      } else {
+        window.location.href = './dashboard.html'
+      }
+    })
+  </script>
+</body>
+</html>
