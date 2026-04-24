@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tareas — Desarrollo de Fondos</title>
+  <link rel="stylesheet" href="./css/style.css">
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar" id="sidebar"></aside>
+  <div class="main">
+    <div class="topbar">
+      <div>
+        <div class="topbar-title">Tareas</div>
+        <div class="topbar-sub">Gestión de tareas de fundraising</div>
+      </div>
+      <button class="btn-primary" onclick="openModal()">+ Nueva tarea</button>
+    </div>
+
+    <div class="filter-row">
+      <button class="btn-filter active" onclick="setFiltro('todas',this)">Todas</button>
+      <button class="btn-filter" onclick="setFiltro('urgente',this)">Urgente</button>
+      <button class="btn-filter" onclick="setFiltro('proceso',this)">En Proceso</button>
+      <button class="btn-filter" onclick="setFiltro('pendiente',this)">Pendiente</button>
+      <button class="btn-filter" onclick="setFiltro('vencidas',this)">Por vencimiento</button>
+      <div class="view-toggle">
+        <button class="btn-view active" onclick="setVista('tabla',this)">Tabla</button>
+        <button class="btn-view" onclick="setVista('kanban',this)">Kanban</button>
+        <button class="btn-view" onclick="setVista('historial',this)">Historial</button>
+      </div>
+    </div>
+
+    <div id="v-tabla">
+      <div class="box">
+        <div class="box-header">
+          <span class="box-title">Tareas activas <span class="count" id="count-activas">0</span></span>
+        </div>
+        <div style="overflow-x:auto">
+          <table>
+            <thead><tr>
+              <th>Inicio</th><th>Tarea</th><th>Medio</th><th>Grupo</th>
+              <th>Organización</th><th>Estado</th><th>Vence</th><th>Link</th><th>Nota</th><th></th>
+            </tr></thead>
+            <tbody id="tbody-tareas"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div id="v-kanban" style="display:none">
+      <div class="kanban" id="kanban-board"></div>
+    </div>
+
+    <div id="v-historial" style="display:none">
+      <div class="box">
+        <div class="box-header">
+          <span class="box-title">Historial <span class="count" id="count-historial">0</span></span>
+        </div>
+        <table>
+          <thead><tr>
+            <th>Completada</th><th>Tarea</th><th>Medio</th><th>Grupo</th><th>Organización</th><th>Nota</th>
+          </tr></thead>
+          <tbody id="tbody-historial"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal -->
+<div class="modal-bg" id="modal">
+  <div class="modal">
+    <div class="modal-title">
+      <span id="modal-title-text">Nueva tarea</span>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    <div class="form-grid">
+      <div class="form-group"><label>Fecha de inicio</label><input type="date" id="f-inicio"></div>
+      <div class="form-group"><label>Fecha de vencimiento</label><input type="date" id="f-vence"></div>
+      <div class="form-group full"><label>Tarea</label><input type="text" id="f-tarea" placeholder="Descripción..."></div>
+      <div class="form-group"><label>Medio</label><select id="f-medio"><option value="">Seleccionar</option></select></div>
+      <div class="form-group"><label>Grupo</label><select id="f-grupo"><option value="">Seleccionar</option></select></div>
+      <div class="form-group"><label>Organización</label>
+        <select id="f-org"><option value="">Seleccionar</option><option>Radio María</option><option>Hombre Nuevo</option></select>
+      </div>
+      <div class="form-group"><label>Estado</label>
+        <select id="f-estado"><option>Pendiente</option><option>En Proceso</option><option>Urgente</option><option>Completada</option></select>
+      </div>
+      <div class="form-group full"><label>URL / Link Drive</label><input type="url" id="f-url" placeholder="https://..."></div>
+      <div class="form-group full"><label>Nota</label><textarea id="f-nota" rows="3"></textarea></div>
+    </div>
+    <div class="form-actions">
+      <button class="btn-secondary" onclick="closeModal()">Cancelar</button>
+      <button class="btn-primary" onclick="guardarTarea()">Guardar tarea</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import { supabase } from './js/supabase.js'
+  import { requireAuth, signOut } from './js/auth.js'
+  import { renderSidebar } from './js/sidebar.js'
+
+  await requireAuth()
+  renderSidebar('tareas', signOut)
+
+  const today = new Date().toISOString().split('T')[0]
+  let allTasks = [], editId = null, filtro = 'todas', vista = 'tabla'
+
+  const ESTADO_BG = {
+    'Pendiente':  'background:#fef3c7;color:#92400e',
+    'En Proceso': 'background:#dbeafe;color:#1e40af',
+    'Urgente':    'background:#fee2e2;color:#991b1b',
+    'Completada': 'background:#d1fae5;color:#065f46',
+  }
+  const ESTADO_DOT = { 'Pendiente':'#f59e0b','En Proceso':'#3b82f6','Urgente':'#ef4444','Completada':'#10b981' }
+  const ORG_STYLE = {
+    'Radio María':  'background:#e0f2fe;color:#075985',
+    'Hombre Nuevo': 'background:#fce7f3;color:#9d174d',
+  }
+
+  async function fetchAll() {
+    const [{ data: t }, { data: c }] = await Promise.all([
+      supabase.from('tasks').select('*').order('created_at', { ascending: false }),
+      supabase.from('config_options').select('*').order('label')
+    ])
+    allTasks = t || []
+    const medios = (c||[]).filter(x => x.type === 'medio')
+    const grupos = (c||[]).filter(x => x.type === 'grupo')
+    const poblar = (id, arr) => {
+      const s = document.getElementById(id)
+      const first = s.options[0]
+      s.innerHTML = ''; s.appendChild(first)
+      arr.forEach(x => { const o = document.createElement('option'); o.textContent = x.label; s.appendChild(o) })
+    }
+    poblar('f-medio', medios); poblar('f-grupo', grupos)
+    render()
+  }
+
+  const isVencida = t => t.fecha_vencimiento && t.fecha_vencimiento < today && t.estado !== 'Completada'
+  const fmtDate = d => d ? d.slice(5).replace('-','/') : '—'
+  const tagOrg = o => o ? `<span class="tag" style="${ORG_STYLE[o]}">${o}</span>` : '—'
+
+  function getFiltered() {
+    const activas = allTasks.filter(t => t.estado !== 'Completada')
+    if (filtro === 'urgente')   return activas.filter(t => t.estado === 'Urgente')
+    if (filtro === 'proceso')   return activas.filter(t => t.estado === 'En Proceso')
+    if (filtro === 'pendiente') return activas.filter(t => t.estado === 'Pendiente')
+    if (filtro === 'vencidas')  return activas.filter(t => isVencida(t))
+    return activas
+  }
+
+  function render() {
+    if (vista === 'tabla')    renderTabla()
+    if (vista === 'kanban')   renderKanban()
+    if (vista === 'historial') renderHistorial()
+  }
+
+  function renderTabla() {
+    const rows = getFiltered()
+    document.getElementById('count-activas').textContent = rows.length
+    document.getElementById('tbody-tareas').innerHTML = rows.length === 0
+      ? `<tr><td colspan="10" style="text-align:center;padding:24px;color:#94a3b8">Sin tareas para este filtro</td></tr>`
+      : rows.map(t => `
+        <tr class="${isVencida(t)?'vencida':''}">
+          <td>${fmtDate(t.fecha_inicio)}</td>
+          <td style="font-weight:500;max-width:150px">${t.tarea}</td>
+          <td>${t.medio ? `<span class="tag" style="background:#f3e8ff;color:#6b21a8">${t.medio}</span>` : '—'}</td>
+          <td>${t.grupo ? `<span class="tag" style="background:#dbeafe;color:#1e40af">${t.grupo}</span>` : '—'}</td>
+          <td>${tagOrg(t.organizacion)}</td>
+          <td><span class="badge" style="${ESTADO_BG[t.estado]}">${t.estado}</span></td>
+          <td class="${isVencida(t)?'venc-red':''}">${fmtDate(t.fecha_vencimiento)}</td>
+          <td>${t.url ? `<a href="${t.url}" target="_blank" style="color:#3b82f6;font-size:10px">Link</a>` : '—'}</td>
+          <td style="color:#94a3b8;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.nota||'—'}</td>
+          <td style="white-space:nowrap">
+            <button class="action-btn action-edit" onclick="window._edit('${t.id}')">Editar</button>
+            <button class="action-btn action-done" onclick="window._done('${t.id}')">✓</button>
+            <button class="action-btn action-delete" onclick="window._del('${t.id}')">✕</button>
+          </td>
+        </tr>`).join('')
+  }
+
+  function renderKanban() {
+    const estados = ['Pendiente','En Proceso','Urgente','Completada']
+    document.getElementById('kanban-board').innerHTML = estados.map(e => {
+      const cards = allTasks.filter(t => t.estado === e)
+      return `<div class="k-col">
+        <div class="k-col-title">
+          <div style="width:7px;height:7px;border-radius:50%;background:${ESTADO_DOT[e]}"></div>
+          ${e} <span class="count">${cards.length}</span>
+        </div>
+        ${cards.map(t => `
+          <div class="k-card" style="border-left:3px solid ${ESTADO_DOT[e]}">
+            <div class="k-card-title">${t.tarea}</div>
+            <div class="k-card-meta">${t.medio||''} · ${t.grupo||''}</div>
+            ${t.fecha_vencimiento ? `<div style="font-size:10px;margin-top:3px;color:${isVencida(t)?'#ef4444':'#94a3b8'};font-weight:${isVencida(t)?500:400}">
+              ${isVencida(t)?'VENCIDA':''} ${fmtDate(t.fecha_vencimiento)}</div>` : ''}
+          </div>`).join('')}
+      </div>`
+    }).join('')
+  }
+
+  function renderHistorial() {
+    const hist = allTasks.filter(t => t.estado === 'Completada')
+    document.getElementById('count-historial').textContent = hist.length
+    document.getElementById('tbody-historial').innerHTML = hist.length === 0
+      ? `<tr><td colspan="6" style="text-align:center;padding:24px;color:#94a3b8">Sin tareas completadas</td></tr>`
+      : hist.map(t => `
+        <tr>
+          <td style="color:#64748b">${t.completada_at?.slice(0,10)||'—'}</td>
+          <td style="font-weight:500">${t.tarea}</td>
+          <td>${t.medio||'—'}</td>
+          <td>${t.grupo||'—'}</td>
+          <td>${tagOrg(t.organizacion)}</td>
+          <td style="color:#94a3b8">${t.nota||'—'}</td>
+        </tr>`).join('')
+  }
+
+  window.setFiltro = (f, el) => {
+    filtro = f
+    document.querySelectorAll('.btn-filter').forEach(b => b.classList.remove('active'))
+    el.classList.add('active')
+    render()
+  }
+
+  window.setVista = (v, el) => {
+    vista = v
+    document.querySelectorAll('.btn-view').forEach(b => b.classList.remove('active'))
+    el.classList.add('active')
+    document.getElementById('v-tabla').style.display    = v==='tabla'    ? '' : 'none'
+    document.getElementById('v-kanban').style.display   = v==='kanban'   ? '' : 'none'
+    document.getElementById('v-historial').style.display = v==='historial' ? '' : 'none'
+    render()
+  }
+
+  window.openModal = (id) => {
+    editId = id || null
+    document.getElementById('modal-title-text').textContent = id ? 'Editar tarea' : 'Nueva tarea'
+    if (id) {
+      const t = allTasks.find(x => x.id === id)
+      document.getElementById('f-inicio').value  = t.fecha_inicio || ''
+      document.getElementById('f-vence').value   = t.fecha_vencimiento || ''
+      document.getElementById('f-tarea').value   = t.tarea
+      document.getElementById('f-medio').value   = t.medio || ''
+      document.getElementById('f-grupo').value   = t.grupo || ''
+      document.getElementById('f-org').value     = t.organizacion || ''
+      document.getElementById('f-estado').value  = t.estado
+      document.getElementById('f-url').value     = t.url || ''
+      document.getElementById('f-nota').value    = t.nota || ''
+    } else {
+      ['f-inicio','f-vence','f-tarea','f-url','f-nota'].forEach(id => document.getElementById(id).value = '')
+      document.getElementById('f-medio').value = ''
+      document.getElementById('f-grupo').value = ''
+      document.getElementById('f-org').value = ''
+      document.getElementById('f-estado').value = 'Pendiente'
+    }
+    document.getElementById('modal').classList.add('open')
+  }
+
+  window.closeModal = () => document.getElementById('modal').classList.remove('open')
+
+  window.guardarTarea = async () => {
+    const payload = {
+      fecha_inicio:      document.getElementById('f-inicio').value  || null,
+      tarea:             document.getElementById('f-tarea').value,
+      medio:             document.getElementById('f-medio').value   || null,
+      grupo:             document.getElementById('f-grupo').value   || null,
+      organizacion:      document.getElementById('f-org').value     || null,
+      estado:            document.getElementById('f-estado').value,
+      fecha_vencimiento: document.getElementById('f-vence').value   || null,
+      url:               document.getElementById('f-url').value     || null,
+      nota:              document.getElementById('f-nota').value     || null,
+    }
+    if (!payload.tarea) return alert('La tarea no puede estar vacía')
+    if (editId) {
+      await supabase.from('tasks').update(payload).eq('id', editId)
+    } else {
+      await supabase.from('tasks').insert(payload)
+    }
+    closeModal(); fetchAll()
+  }
+
+  window._edit   = id => openModal(id)
+  window._done   = async id => { await supabase.from('tasks').update({ estado:'Completada', completada_at: new Date().toISOString() }).eq('id',id); fetchAll() }
+  window._del    = async id => { if(confirm('¿Eliminar esta tarea?')) { await supabase.from('tasks').delete().eq('id',id); fetchAll() } }
+
+  fetchAll()
+</script>
+</body>
+</html>
